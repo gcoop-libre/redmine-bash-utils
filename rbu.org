@@ -1,0 +1,26 @@
+#+TITLE:     Redmine Bash Utils
+#+AUTHOR:    Osiris Alejandro Gómez
+#+EMAIL:     osiris@gcoop.coop
+#+LANGUAGE:  en
+#+LINK:      ISSUE https://github.com/gcoop-libre/redmine-bash-utils/issues/
+#+LINK:      GIT https://github.com/gcoop-libre/redmine-bash-utils/commit/
+
+
+
+** Releases
+*** Release 0.1 [1/1]
+**** DONE publish actual version of scripts
+     CLOSED: [2015-09-11 vie 05:46]
+     :LOGBOOK:
+     - State "DONE"       from "NEXT"       [2015-09-11 vie 05:46]
+     CLOCK: [2015-09-11 vie 04:13]--[2015-09-11 vie 05:46] =>  1:33
+     :END:
+
+*** TODO Release 0.2
+
+** Bugs [0/0]
+** Features [0/1]
+*** TODO Export Org-mode =CLOCK:= entries to Redmine
+** Merge [0/0]
+** README [0/1]
+*** TODO Add Spanish translation

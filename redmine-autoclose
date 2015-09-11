@@ -1,0 +1,208 @@
+#!/bin/bash
+#
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2015 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+echo "ERROR $1" && exit 1
+}
+
+sql_get_user_id ()
+{
+cat << EOF
+SELECT id FROM users WHERE login='$1';
+EOF
+}
+
+sql_get_project_id ()
+{
+cat << EOF
+SELECT id FROM projects WHERE name='$1';
+EOF
+}
+
+sql_get_status_id ()
+{
+cat << EOF
+SELECT id FROM issue_statuses WHERE name='$1';
+EOF
+}
+
+sql_get_issues ()
+{
+cat << EOF
+SELECT      id,
+            DATE(created_on) AS creado,
+            DATE(updated_on) AS actualizado,
+            DATEDIFF(CURDATE(), DATE(updated_on)) AS dias,
+            subject
+
+FROM        issues
+WHERE       project_id = $PROJECT_ID
+AND         status_id  = $FROM_STATUS_ID
+AND         DATEDIFF(CURDATE(), DATE(updated_on)) >$DAYS
+ORDER BY    updated_on;
+EOF
+}
+
+sql_update_issue ()
+{
+cat << EOF
+UPDATE      issues
+SET         status_id = $TO_STATUS_ID
+WHERE       project_id = $PROJECT_ID
+AND         status_id = $FROM_STATUS_ID
+AND         id = $1
+AND         DATEDIFF(CURDATE(), DATE(updated_on)) > $DAYS;
+EOF
+}
+
+sql_insert_journal ()
+{
+cat << EOF
+INSERT INTO journals (journalized_id, journalized_type, notes, user_id, created_on, private_notes)
+VALUES ( $1, 'Issue', '$NOTES', $USER_ID, NOW(), 0);
+EOF
+}
+
+init ()
+{
+
+local opts mycnf="" username="" days="" from_status="" to_status="" proyect_name="" email="" comments=""
+opts="$($GETOPT -o mudftpec -l mycnf,user,days,from-status,to-status,proyect,email,comments -n "$PROGRAM" -- "$@")"
+local err=$?
+eval set -- "$opts"
+while true;do case $1 in
+    -m|--mycnf) mycnf=1; shift ;;
+    -u|--user) user=1; shift ;;
+    -d|--days) days=1; shift ;;
+    -f|--from-status) from_status=1; shift ;;
+    -t|--to-status) to_status=1; shift ;;
+    -p|--proyect-name) proyect=1; shift ;;
+    -e|--email) email=1; shift ;;
+    -c|--comments) comments=1; shift ;;
+    --) shift; break ;;
+esac done
+
+[[ $mycnf -eq 1 ]] && MYCNF="$1"
+[[ $user -eq 1 ]] && USER_NAME="$2"
+[[ $days -eq 1 ]] && DAYS="$3"
+[[ $from_status -eq 1 ]] && FROM_STATUS="$4"
+[[ $to_status -eq 1 ]] && TO_STATUS="$5"
+[[ $proyect -eq 1 ]] && PROJECT_NAME="$6"
+[[ $email -eq 1 ]] && EMAIL="$7"
+[[ $comments -eq 1 ]] && NOTES="$8"
+
+EXAMPLE=$(cat << EOF
+
+
+Short version:
+
+$PROGRAM -m ~/.my.cnf -u mr.robot -d 7 -f fixed -t closed -p test -e root@evilcorp.com -n 'closed for inactivity'
+
+Extended version:
+
+$PROGRAM --mycnf ~/.my.cnf
+         --user mr.robot
+         --days 7
+         --from-status fixed
+         --to-status closed
+         --project test
+         --email root@evilcorp.com
+         --comments 'closed for inactivity'
+
+EOF
+)
+
+[[ $err -ne 0 ]] && die "Invalid: $COMMAND $EXAMPLE"
+}
+
+GETOPT='getopt'
+PROGRAM="${0##*/}"
+COMMAND="$@"
+
+init "$@"
+
+DATE=`date +%Y-%m-%d\ %H:%M`
+echo 'date: '$DATE
+
+[[ -z "$MYCNF" ]] && MYCNF=$HOME'/.my.cnf'
+[[ ! -e $MYCNF ]] && die "no valid $MYCNF"
+
+MYSQL="mysql --defaults-file=$MYCNF -N"
+
+[[ -z $USER_NAME ]] && USER_NAME="mr.robot"
+echo 'user_name: '$USER_NAME
+
+USER_ID=`sql_get_user_id "$USER_NAME" | $MYSQL`
+[[ -z $USER_ID ]] && die "no valid user_id for $USER_NAME"
+echo 'user_id: '$USER_ID
+
+[[ -z $PROJECT_NAME ]] && die "no valid project_name"
+echo 'project_name: '$PROJECT_NAME
+
+PROJECT_ID=`sql_get_project_id "$PROJECT_NAME" | $MYSQL`
+[[ -z $PROJECT_ID ]] && die "no valid project_id"
+echo 'project_id: '$PROJECT_ID
+
+echo 'from_status: '$FROM_STATUS
+FROM_STATUS_ID=`sql_get_status_id "$FROM_STATUS" | $MYSQL`
+[[ -z $FROM_STATUS_ID ]] && die "no valid id for $FROM_STATUS"
+echo 'from_status_id: '$FROM_STATUS_ID
+
+echo 'to_status: '$TO_STATUS
+TO_STATUS_ID=`sql_get_status_id "$TO_STATUS" | $MYSQL`
+[[ -z $TO_STATUS_ID ]] && die "no valid id for $TO_STATUS"
+echo 'to_status_id: '$TO_STATUS_ID
+
+echo 'days: '$DAYS
+[[ -z $DAYS ]] && die "no valid days"
+
+[[ -z "$NOTES" ]] && NOTES="Closed for inactivity $DAYS days with status: $FROM_STATUS"
+
+UPDATE=/tmp/issues.redmine.sql
+ISSUES=/tmp/issues.redmine.log
+
+sql_get_issues | $MYSQL >"$ISSUES"
+TOTAL=`wc -l "$ISSUES" | awk '{print $1}'`
+echo "total issues: $TOTAL"
+
+[[ "$TOTAL" -eq 0 ]] && die "nothing to do :)"
+
+echo
+cat "$ISSUES"
+
+[[ -e "$UPDATE" ]] && >"$UPDATE"
+
+awk '{print $1}' "$ISSUES" | while read i
+do
+    sql_update_issue $i >>$UPDATE
+    sql_insert_journal $i >>"$UPDATE"
+done
+
+[[ ! -e "$UPDATE" ]] && die "no valid $UPDATE"
+
+T=`wc -l "$UPDATE" | awk '{print $1}'`
+
+[[ "$T" -eq 0 ]] && die "empty file $UPDATE"
+
+cat "$UPDATE" | $MYSQL
+
+[[ -z "$EMAIL" ]] && exit 0
+
+mail $EMAIL -s "$NOTES" < $ISSUES
+

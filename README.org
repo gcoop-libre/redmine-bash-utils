@@ -1,0 +1,80 @@
+#+TITLE:     Redmine Bash Utils
+#+AUTHOR:    Osiris Alejandro Gómez
+#+EMAIL:     osiris@gcoop.coop
+#+LANGUAGE:  en
+#+LINK:      ISSUE https://github.com/gcoop-libre/redmine-bash-utils/issues/
+
+
+
+
+** Overview
+
+   Repository of bash scripts for using Redmine from TTY.
+
+** License
+
+   This program is free software: you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+   published by the Free Software Foundation, either version 3 of the
+   License, or any later version.
+
+** Install
+
+   Clone the repository:
+
+   #+BEGIN_SRC sh :session :results none :exports code
+     cd ~
+     git clone https://github.com/gcoop-libre/redmine-bash-utils
+   #+END_SRC
+
+   Add to =~/.bashrc=:
+
+   #+BEGIN_SRC sh :session :results none :exports code
+     [[ -d "$HOME/redmine-bash-utils" ]] && PATH="$HOME/redmine-bash-utils:$PATH"
+   #+END_SRC
+
+** Sripts
+*** =redmine-autoclose=
+
+    Close issues with =n= days inactivity in some status.
+
+    Short version:
+
+    #+BEGIN_SRC sh :session :results output :exports code
+      redmine-autoclose -m ~/.my.cnf -u mr.robot -d 7 -f fixed -t closed -p test -e root@evilcorp.com -n 'closed for inactivity'
+    #+END_SRC
+
+    Extended version:
+
+    #+BEGIN_SRC sh :session :results output :exports code
+      redmine-autoclose --mycnf ~/.my.cnf \
+                        --user mr.robot \
+                        --days 7 \
+                        --from-status fixed \
+                        --to-status closed \
+                        --project test \
+                        --email root@evilcorp.com \
+                        --comments 'closed for inactivity'
+    #+END_SRC
+
+*** =redmine-time-entry=
+
+    First configure API_URL and API_KEY in =~/.redmine.conf=:
+
+    #+BEGIN_SRC sh :session :results output :exports results
+      cat ~/redmine-bash-utils/.redmine.conf
+    #+END_SRC
+
+    #+RESULTS:
+    : API_URL: https://redmine.org
+    : API_KEY: abcdefghijklmnopqrstuvwxyz0123456789012
+
+    Insert one time entry for a specific issue:
+
+    #+BEGIN_SRC sh :session :results output :exports both
+      redmine-time-entry 9507 5 "fixed in five minutes!"
+    #+END_SRC
+
+    #+RESULTS:
+    :         "created_on": "2015-09-11T08:38:06Z",
+    :         "hours": 0.08,

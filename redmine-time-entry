@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2015 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+  echo "ERROR $1" && exit 1
+}
+
+CONFIG="$HOME/.redmine.conf"
+[[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
+
+[[ -z "$1" ]] && exit 1
+[[ -z "$2" ]] && exit 1
+[[ -z "$3" ]] && exit 1
+
+ISSUE_ID=$1
+MINUTES=$2
+HOURS=`echo "scale = 10;$MINUTES/60" | bc | awk '{printf "%0.2f",$1}'`
+
+COMMENTS="$3"
+SPENT_ON=`date +%Y-%m-%d`
+
+export http_proxy=""
+export https_proxy=""
+
+eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
+do
+    str="$key='$val'"
+    echo "$str"
+done)
+
+[[ -z "$API_URL" ]] && die "empty URL"
+[[ -z "$API_KEY" ]] && die "empty KEY"
+
+JSON_FILE='/tmp/time.json'
+
+JSON=$(cat << EOF
+{
+    "time_entry": {
+        "activity_id": 14,
+        "comments": "$COMMENTS",
+        "hours": $HOURS,
+        "issue_id": $ISSUE_ID,
+        "spent_on": "$SPENT_ON"
+    }
+}
+EOF
+)
+
+echo $JSON >$JSON_FILE
+
+H1='"Content-Type: application/json"'
+H2='"X-Redmine-API-Key: '$API_KEY'"'
+URL="$API_URL/time_entries.json"
+
+echo curl -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" $URL \
+    | bash \
+    | python -mjson.tool | egrep "(hours|created)"
+
