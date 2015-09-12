@@ -54,7 +54,7 @@ SELECT      id,
 FROM        issues
 WHERE       project_id = $PROJECT_ID
 AND         status_id  = $FROM_STATUS_ID
-AND         DATEDIFF(CURDATE(), DATE(updated_on)) >$DAYS
+AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS
 ORDER BY    updated_on;
 EOF
 }
@@ -67,7 +67,7 @@ SET         status_id = $TO_STATUS_ID
 WHERE       project_id = $PROJECT_ID
 AND         status_id = $FROM_STATUS_ID
 AND         id = $1
-AND         DATEDIFF(CURDATE(), DATE(updated_on)) > $DAYS;
+AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS;
 EOF
 }
 
@@ -169,8 +169,14 @@ TO_STATUS_ID=`sql_get_status_id "$TO_STATUS" | $MYSQL`
 [[ -z $TO_STATUS_ID ]] && die "no valid id for $TO_STATUS"
 echo 'to_status_id: '$TO_STATUS_ID
 
-echo 'days: '$DAYS
 [[ -z $DAYS ]] && die "no valid days"
+
+WEEKDAY=`date +%u`
+
+[[ "$WEEKDAY" -eq 6 ]] && DAYS=$DAYS+1
+[[ "$WEEKDAY" -eq 7 ]] && DAYS=$DAYS+2
+
+echo 'days: '$DAYS
 
 [[ -z "$NOTES" ]] && NOTES="Closed for inactivity $DAYS days with status: $FROM_STATUS"
 
