@@ -177,7 +177,6 @@ WEEKDAY=`date +%u`
 [[ "$WEEKDAY" -eq 7 ]] && DAYS=$((DAYS+2))
 
 echo 'days: '$DAYS
-exit
 
 [[ -z "$NOTES" ]] && NOTES="Closed for inactivity $DAYS days with status: $FROM_STATUS"
 
