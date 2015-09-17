@@ -178,7 +178,7 @@ WEEKDAY=`date +%u`
 
 echo 'days: '$DAYS
 
-[[ -z "$NOTES" ]] && NOTES="Closed for inactivity $DAYS days with status: $FROM_STATUS"
+[[ -z "$NOTES" ]] && NOTES="After $DAYS of inactivity, change status from: $FROM_STATUS to: $TO_STATUS"
 
 UPDATE=/tmp/issues.redmine.sql
 ISSUES=/tmp/issues.redmine.log
