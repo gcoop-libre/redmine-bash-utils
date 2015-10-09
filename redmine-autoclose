@@ -42,20 +42,96 @@ SELECT id FROM issue_statuses WHERE name='$1';
 EOF
 }
 
+sql_get_priority_id ()
+{
+cat << EOF
+SELECT  id
+FROM    enumerations
+WHERE   name='$1'
+AND     type='IssuePriority'
+AND     active=1;
+EOF
+}
+
+sql_get_max_priority_postition ()
+{
+cat << EOF
+SELECT  MAX(position)
+FROM    enumerations
+WHERE   type='IssuePriority'
+AND     active=1;
+EOF
+}
+
+sql_get_priority_by_position ()
+{
+cat << EOF
+SELECT  id
+FROM    enumerations
+WHERE   position = $1
+AND     type='IssuePriority'
+AND     active=1;
+EOF
+}
+
+sql_get_priority ()
+{
+cat << EOF
+SELECT  name
+FROM    enumerations
+WHERE   id='$1'
+AND     type='IssuePriority'
+AND     active=1;
+EOF
+}
+
+sql_get_priority_position ()
+{
+cat << EOF
+SELECT  position
+FROM    enumerations
+WHERE   id='$1'
+AND     type='IssuePriority'
+AND     active=1;
+EOF
+}
+
+sql_update_priority ()
+{
+cat << EOF
+UPDATE      issues
+SET         priority_id = $TO_PRIORITY_ID
+WHERE       project_id = $PROJECT_ID
+AND         priority_id = $FROM_PRIORITY_ID
+AND         id = $1
+AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS;
+EOF
+}
+
+sql_get_issue_priority_id ()
+{
+cat << EOF
+SELECT      priority_id
+FROM        issues
+WHERE       project_id = $PROJECT_ID
+AND         id = $1
+EOF
+}
+
 sql_get_issues ()
 {
 cat << EOF
-SELECT      id,
-            DATE(created_on) AS creado,
-            DATE(updated_on) AS actualizado,
-            DATEDIFF(CURDATE(), DATE(updated_on)) AS dias,
-            subject
+SELECT      i.id,
+            DATE(i.created_on) AS creado,
+            DATE(i.updated_on) AS actualizado,
+            DATEDIFF(CURDATE(), DATE(i.updated_on)) AS dias,
+            i.subject
 
-FROM        issues
-WHERE       project_id = $PROJECT_ID
-AND         status_id  = $FROM_STATUS_ID
-AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS
-ORDER BY    updated_on;
+FROM        issues AS i
+WHERE       i.project_id = $PROJECT_ID
+AND         i.status_id  = $FROM_STATUS_ID
+AND         DATEDIFF(CURDATE(), DATE(i.updated_on)) >= $DAYS
+ORDER BY    i.id;
 EOF
 }
 
@@ -191,13 +267,54 @@ echo "total issues: $TOTAL"
 
 echo
 cat "$ISSUES"
+echo
 
 [[ -e "$UPDATE" ]] && >"$UPDATE"
 
 awk '{print $1}' "$ISSUES" | while read i
 do
-    sql_update_issue "$i" >>$UPDATE
-    sql_insert_journal "$i" >>"$UPDATE"
+    if [ "$FROM_STATUS_ID" = "$TO_STATUS_ID" ]
+    then
+        FROM_PRIORITY_ID=`sql_get_issue_priority_id $i | $MYSQL`
+        [[ -z "$FROM_PRIORITY_ID" ]] && die "empty FROM_PRIORITY_ID"
+
+        FROM_PRIORITY=`sql_get_priority $FROM_PRIORITY_ID | $MYSQL`
+        [[ -z "$FROM_PRIORITY" ]] && die "empty FROM_PRIORITY"
+
+        FROM_POSITION=`sql_get_priority_position $FROM_PRIORITY_ID | $MYSQL`
+        [[ -z "$FROM_POSITION" ]] && die "empty from_position"
+
+        TO_POSITION=$[ $FROM_POSITION + 1]
+        MAX_POSITION=`sql_get_max_priority_postition | $MYSQL`
+        [[ -z "$MAX_POSITION" ]] && die "empty max_position"
+
+        if [ $TO_POSITION -gt $MAX_POSITION ]
+        then
+            TO_POSITION=$MAX_POSITION
+        fi
+
+        [[ -z "$TO_POSITION" ]] && die "empty to_position"
+
+        TO_PRIORITY_ID=`sql_get_priority_by_position $TO_POSITION | $MYSQL`
+        [[ -z "$TO_PRIORITY_ID" ]] && die "empty TO_PRIORITY_ID"
+
+        TO_PRIORITY=`sql_get_priority $TO_PRIORITY_ID | $MYSQL`
+        [[ -z "$TO_PRIORITY" ]] && die "empty TO_PRIORITY"
+
+        NOTES="After $DAYS of inactivity, change priority from: $FROM_PRIORITY to: $TO_PRIORITY"
+
+        if [ $FROM_PRIORITY_ID -eq $TO_PRIORITY_ID ]
+        then
+            continue
+        else
+            echo "$i "$NOTES
+            sql_update_priority "$i" $TO_PRIORITY_ID >>$UPDATE
+            sql_insert_journal "$i" >>"$UPDATE"
+        fi
+    else
+        sql_update_issue "$i" >>$UPDATE
+        sql_insert_journal "$i" >>"$UPDATE"
+    fi
 done
 
 [[ ! -e "$UPDATE" ]] && die "no valid $UPDATE"
