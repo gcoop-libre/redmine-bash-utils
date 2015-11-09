@@ -158,8 +158,8 @@ EOF
 init ()
 {
 
-local opts mycnf="" user="" days="" from_status="" to_status="" proyect="" email="" comments=""
-opts="$($GETOPT -o mudftpec -l mycnf,user,days,from-status,to-status,proyect,email,comments -n "$PROGRAM" -- "$@")"
+local opts mycnf="" user="" days="" from_status="" to_status="" project="" email="" comments=""
+opts="$($GETOPT -o mudftpec -l mycnf,user,days,from-status,to-status,project,email,comments -n "$PROGRAM" -- "$@")"
 local err=$?
 eval set -- "$opts"
 while true;do case $1 in
@@ -168,7 +168,7 @@ while true;do case $1 in
     -d|--days) days=1; shift ;;
     -f|--from-status) from_status=1; shift ;;
     -t|--to-status) to_status=1; shift ;;
-    -p|--proyect-name) proyect=1; shift ;;
+    -p|--project-name) project=1; shift ;;
     -e|--email) email=1; shift ;;
     -c|--comments) comments=1; shift ;;
     --) shift; break ;;
@@ -179,7 +179,7 @@ esac done
 [[ $days -eq 1 ]] && DAYS="$3"
 [[ $from_status -eq 1 ]] && FROM_STATUS="$4"
 [[ $to_status -eq 1 ]] && TO_STATUS="$5"
-[[ $proyect -eq 1 ]] && PROJECT_NAME="$6"
+[[ $project -eq 1 ]] && PROJECT_NAME="$6"
 [[ $email -eq 1 ]] && EMAIL="$7"
 [[ $comments -eq 1 ]] && NOTES="$8"
 
@@ -327,5 +327,5 @@ $MYSQL < "$UPDATE"
 
 [[ -z "$EMAIL" ]] && exit 0
 
-mail "$EMAIL" -s "$NOTES" < $ISSUES
+mail "$EMAIL" -s "[$PROJECT_NAME] $NOTES" < $ISSUES
 
