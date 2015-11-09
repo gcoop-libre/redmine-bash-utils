@@ -1,0 +1,167 @@
+#!/bin/bash
+#
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2015 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+echo "ERROR $1" && exit 1
+}
+
+sql_get_user_id ()
+{
+cat << EOF
+SELECT id FROM users WHERE login='$1';
+EOF
+}
+
+sql_get_time_trackers ()
+{
+cat << EOF
+SELECT      *
+FROM        time_trackers
+WHERE       user_id = '$1'
+AND         started_on IS NULL
+AND         (
+                project_id IS NULL
+OR              issue_id IS NULL
+            );
+EOF
+}
+
+sql_delete_time_trackers ()
+{
+
+[[ -z "$1" ]] && exit 1
+
+cat << EOF
+DELETE
+FROM        time_trackers
+WHERE       user_id = '$1'
+AND         started_on IS NULL
+AND         (
+                project_id IS NULL
+OR              issue_id IS NULL
+            );
+EOF
+}
+
+sql_get_time_entries ()
+{
+
+[[ -z "$1" ]] && exit 1
+
+cat << EOF
+SELECT      project_id,
+            user_id,
+            issue_id,
+            hours,
+            activity_id,
+            spent_on,
+            tyear,
+            tmonth,
+            tweek
+
+FROM        time_entries
+WHERE       user_id = '$1'
+AND         hours > 24;
+EOF
+
+}
+
+sql_delete_time_entries ()
+{
+
+[[ -z "$1" ]] && exit 1
+
+cat << EOF
+DELETE
+FROM        time_entries
+WHERE       user_id = '$1'
+AND         hours > 24;
+EOF
+
+}
+
+init ()
+{
+
+local opts mycnf="" user=""
+opts="$($GETOPT -o mu -l mycnf,user -n "$PROGRAM" -- "$@")"
+local err=$?
+eval set -- "$opts"
+while true;do case $1 in
+    -m|--mycnf) mycnf=1; shift ;;
+    -u|--user) user=1; shift ;;
+    --) shift; break ;;
+esac done
+
+[[ $mycnf -eq 1 ]] && MYCNF="$1"
+[[ $user -eq 1 ]] && USER_NAME="$2"
+
+EXAMPLE=$(cat << EOF
+
+
+Short version:
+
+$PROGRAM -m ~/.my.cnf -u mr.robot
+
+Extended version:
+
+$PROGRAM --mycnf ~/.my.cnf
+         --user mr.robot
+
+EOF
+)
+
+[[ $err -ne 0 ]] && die "Invalid: $COMMAND $EXAMPLE"
+}
+
+GETOPT='getopt'
+PROGRAM="${0##*/}"
+COMMAND="$@"
+
+init "$@"
+
+DATE=`date +%Y-%m-%d\ %H:%M`
+echo "date: $DATE"
+
+[[ -z "$MYCNF" ]] && MYCNF=$HOME'/.my.cnf'
+[[ ! -e $MYCNF ]] && die "no valid $MYCNF"
+
+MYSQL="mysql --defaults-file=$MYCNF -N"
+
+[[ -z $USER_NAME ]] && USER_NAME="mr.robot"
+echo "user_name: $USER_NAME"
+
+USER_ID=`sql_get_user_id "$USER_NAME" | $MYSQL`
+[[ -z $USER_ID ]] && die "no valid user_id for $USER_NAME"
+echo "user_id: $USER_ID"
+
+UPDATE=/tmp/issues.redmine.sql
+TMP=/tmp/tmp.redmine.log
+
+sql_get_time_trackers $USER_ID | $MYSQL | tee $TMP
+TOTAL_TRACKERS=`wc -l $TMP | awk '{print $1}'`
+echo "total trackers: $TOTAL_TRACKERS"
+
+sql_get_time_entries $USER_ID | $MYSQL | tee $TMP
+TOTAL_ENTRIES=`wc -l $TMP | awk '{print $1}'`
+echo "total entries: $TOTAL_ENTRIES"
+
+[[ "$TOTAL_TRACKERS" -gt 0 ]] && sql_delete_time_trackers $USER_ID | $MYSQL
+[[ "$TOTAL_ENTRIES" -gt 0 ]] && sql_delete_time_entries $USER_ID | $MYSQL
+
