@@ -100,29 +100,29 @@ init ()
 {
 
 local opts mycnf="" user=""
-opts="$($GETOPT -o mu -l mycnf,user -n "$PROGRAM" -- "$@")"
+opts="$($GETOPT -o um -l user,mycnf -n "$PROGRAM" -- "$@")"
 local err=$?
 eval set -- "$opts"
 while true;do case $1 in
-    -m|--mycnf) mycnf=1; shift ;;
     -u|--user) user=1; shift ;;
+    -m|--mycnf) mycnf=1; shift ;;
     --) shift; break ;;
 esac done
 
-[[ $mycnf -eq 1 ]] && MYCNF="$1"
-[[ $user -eq 1 ]] && USER_NAME="$2"
+[[ $user -eq 1 ]] && USER_NAME="$1"
+[[ $mycnf -eq 1 ]] && MYCNF="$2"
 
 EXAMPLE=$(cat << EOF
 
 
 Short version:
 
-$PROGRAM -m ~/.my.cnf -u mr.robot
+$PROGRAM -u mr.robot -m ~/.my.cnf
 
 Extended version:
 
-$PROGRAM --mycnf ~/.my.cnf
-         --user mr.robot
+$PROGRAM --user mr.robot
+         --mycnf ~/.my.cnf
 
 EOF
 )
