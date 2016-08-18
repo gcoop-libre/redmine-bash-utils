@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2016 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+  echo "ERROR $1" && exit 1
+}
+
+CONFIG="$HOME/.redmine.conf"
+[[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
+
+export http_proxy=""
+export https_proxy=""
+
+eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
+do
+    str="$key='$val'"
+    echo "$str"
+done)
+
+[[ -z "$API_URL" ]] && die "empty URL"
+[[ -z "$API_KEY" ]] && die "empty KEY"
+
+[[ -z "$1" ]] && die "empty SUBJECT"
+SUBJECT="$1"
+
+[[ ! -z "$DEFAULT_PRIORITY_ID" ]]    && PRIORITY_ID=$DEFAULT_PRIORITY_ID
+[[ ! -z "$DEFAULT_PROJECT_ID" ]]     && PROJECT_ID=$DEFAULT_PROJECT_ID
+[[ ! -z "$DEFAULT_ASSIGNED_TO_ID" ]] && ASSIGNED_TO_ID=$DEFAULT_ASSIGNED_TO_ID
+[[ ! -z "$DEFAULT_CATEGORY_ID" ]]    && CATEGORY_ID=$DEFAULT_CATEGORY_ID
+[[ ! -z "$DEFAULT_STATUS_ID" ]]      && STATUS_ID=$DEFAULT_STATUS_ID
+[[ ! -z "$DEFAULT_TRACKER_ID" ]]     && TRACKER_ID=$DEFAULT_TRACKER_ID
+
+DESCRIPTION=''
+[[ ! -z "$2" ]] && DESCRIPTION="$2"
+[[ ! -z "$3" ]] && PRIORITY_ID="$3"
+[[ ! -z "$4" ]] && PROJECT_ID="$4"
+
+[[ "$PRIORITY_ID" -lt "$PRIORITY_MIN_ID" ]] && die "invalid PRIORITY_ID"
+[[ "$PRIORITY_ID" -gt "$PRIORITY_MAX_ID" ]] && die "invalid PRIORITY_ID"
+
+[[ ! "$PROJECT_ID" =~ "$NUMBER" ]] && die "invalid PROJECT_ID"
+
+JSON_FILE='/tmp/new.json'
+
+JSON=$(cat << EOF
+{
+    "issue": {
+      "project_id": $PROJECT_ID,
+      "subject": "$SUBJECT",
+      "priority_id": $PRIORITY_ID,
+      "assigned_to_id": $ASSIGNED_TO_ID,
+      "status_id": $STATUS_ID,
+      "tracker_id": $TRACKER_ID,
+      "description": "$DESCRIPTION"
+    }
+}
+EOF
+)
+
+echo $JSON >$JSON_FILE
+
+H1='"Content-Type: application/json"'
+H2='"X-Redmine-API-Key: '$API_KEY'"'
+URL="$API_URL/issues.json"
+
+echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" $URL \
+    | bash \
+    | python -mjson.tool \
+    | egrep '"id"' \
+    | tr -d ',"' \
+    | sed 's/^ \+//g' \
+    | awk '{print $2}' \
+    | sort -nr \
+    | head -1
