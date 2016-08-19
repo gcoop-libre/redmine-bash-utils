@@ -68,7 +68,7 @@ H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/time_entries.json"
 
-echo curl -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" $URL \
+echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" $URL \
     | bash \
     | python -mjson.tool | egrep "(hours|created)"
 
