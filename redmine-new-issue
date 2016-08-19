@@ -49,15 +49,21 @@ SUBJECT="$1"
 DESCRIPTION=''
 [[ ! -z "$2" ]] && DESCRIPTION="$2"
 [[ ! -z "$3" ]] && PRIORITY_ID="$3"
-[[ ! -z "$4" ]] && PROJECT_ID="$4"
+[[ ! -z "$4" ]] && ASSIGNED_TO_ID="$4"
+[[ ! -z "$5" ]] && PARENT_ID="$5"
+[[ ! -z "$6" ]] && PROJECT_ID="$6"
 
 [[ "$PRIORITY_ID" -lt "$PRIORITY_MIN_ID" ]] && die "invalid PRIORITY_ID"
 [[ "$PRIORITY_ID" -gt "$PRIORITY_MAX_ID" ]] && die "invalid PRIORITY_ID"
+
+VALID_ASSIGNED_LOGIN=$(echo "$4" | egrep "^[a-zA-Z]+$")
 
 [[ ! "$PROJECT_ID" =~ "$NUMBER" ]] && die "invalid PROJECT_ID"
 
 JSON_FILE='/tmp/new.json'
 
+if [ -z "$PARENT_ID" ]
+then
 JSON=$(cat << EOF
 {
     "issue": {
@@ -72,6 +78,24 @@ JSON=$(cat << EOF
 }
 EOF
 )
+else
+JSON=$(cat << EOF
+{
+    "issue": {
+      "project_id": $PROJECT_ID,
+      "subject": "$SUBJECT",
+      "priority_id": $PRIORITY_ID,
+      "assigned_to_id": $ASSIGNED_TO_ID,
+      "status_id": $STATUS_ID,
+      "tracker_id": $TRACKER_ID,
+      "parent_id": $PARENT_ID,
+      "root_id": $PARENT_ID,
+      "description": "$DESCRIPTION"
+    }
+}
+EOF
+)
+fi
 
 echo $JSON >$JSON_FILE
 
