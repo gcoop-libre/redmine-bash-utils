@@ -46,7 +46,7 @@ URL="$API_URL/issues/${ISSUE_ID}.json"
 echo
 echo curl -s -k -H "$H1" -X GET -H "$H2" $URL \
     | bash \
-    | python -mjson.tool
+    | python -mjson.tool \
     | egrep "(name|created_on|subject|updated_on|description|spent_hours|done_ratio)" \
     | cut -d: -f1,2 \
     | sed s/'^\ \+'// \
