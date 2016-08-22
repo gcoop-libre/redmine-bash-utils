@@ -43,7 +43,7 @@ ISSUE_ID="$1"
 
 JSON_FILE='/tmp/new.json'
 
-if [ -z $NOTES ]
+if [ -z "$NOTES" ]
 then
 JSON=$(cat << EOF
 {
