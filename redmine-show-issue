@@ -24,6 +24,13 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
+for b in curl jq
+do
+  which $b 2>/dev/null >/dev/null
+  OK=$(echo $?)
+  [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
+done
+
 export http_proxy=""
 export https_proxy=""
 
@@ -43,12 +50,22 @@ H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
 
+JQ=$(cat  << EOF
+{
+issue: .issue.id,
+tracker: .issue.tracker.name,
+status: .issue.status.name,
+priority: .issue.priority.name,
+subject: .issue.subject,
+updated_on: .issue.updated_on,
+description: .issue.description,
+spent_hours: .issue.spent_hours,
+done_ratio: .issue.done_ratio,
+assigned_to: .issue.assigned_to
+}
+EOF
+)
+
 echo
-echo curl -s -k -H "$H1" -X GET -H "$H2" $URL \
-    | bash \
-    | python -mjson.tool \
-    | egrep "(name|created_on|subject|updated_on|description|spent_hours|done_ratio)" \
-    | cut -d: -f1,2 \
-    | sed s/'^\ \+'// \
-    | sed 's/\\u00f3/ó/g' \
-    | awk -F':' '{printf "%15s:%s\n",$1,$2}'
+echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" | bash | jq ". | $JQ"
+
