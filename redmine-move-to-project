@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2016 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+  echo "ERROR $1" && exit 1
+}
+
+CONFIG="$HOME/.redmine.conf"
+[[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
+
+export http_proxy=""
+export https_proxy=""
+
+eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
+do
+    str="$key='$val'"
+    echo "$str"
+done)
+
+[[ -z "$API_URL" ]] && die "empty URL"
+[[ -z "$API_KEY" ]] && die "empty KEY"
+
+[[ ! -z "$DEFAULT_PROJECT_ID" ]] && PROJECT_ID="$DEFAULT_PROJECT_ID"
+
+[[ -z "$1" ]] && die "empty ISSUE_ID"
+ISSUE_ID="$1"
+
+[[ ! -z "$2" ]] && PROJECT_ID="$2"
+
+# FIXME validate PROJECT_ID
+
+JSON_FILE='/tmp/new.json'
+
+JSON=$(cat << EOF
+{
+    "issue": {
+      "project_id": $PROJECT_ID
+    }
+}
+EOF
+)
+
+echo "$JSON" >"$JSON_FILE"
+
+H1='"Content-Type: application/json"'
+H2='"X-Redmine-API-Key: '$API_KEY'"'
+URL="$API_URL/issues/${ISSUE_ID}.json"
+
+echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash
