@@ -34,9 +34,9 @@ do
 
   if [ -z "$DESCRIPTION" ]
   then
-    echo redmine-new-issue "$SUBJECT"
+    redmine-new-issue "$SUBJECT"
   else
-    echo redmine-new-issue "$SUBJECT" "$DESCRIPTION"
+    redmine-new-issue "$SUBJECT" "$DESCRIPTION"
   fi
 
 done < "$FILE"
