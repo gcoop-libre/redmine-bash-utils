@@ -18,7 +18,7 @@
 
 die ()
 {
-  echo "ERROR $1" && exit 1
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 CONFIG="$HOME/.redmine.conf"
@@ -27,7 +27,7 @@ CONFIG="$HOME/.redmine.conf"
 for b in curl jq
 do
   which $b 2>/dev/null >/dev/null
-  OK=$(echo $?)
+  OK="$?"
   [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
 done
 
@@ -53,6 +53,7 @@ URL="$API_URL/issues/${ISSUE_ID}.json"
 JQ=$(cat  << EOF
 {
 issue: .issue.id,
+parent: .issue.parent,
 tracker: .issue.tracker.name,
 status: .issue.status.name,
 priority: .issue.priority.name,
@@ -67,5 +68,10 @@ EOF
 )
 
 echo
-echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" | bash | jq ". | $JQ"
+echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" \
+  | bash \
+  | jq ". | $JQ" \
+  | sed 's/\\r\\n/\n/g' \
+  | sed 's/\\t/\t/g'
+
 

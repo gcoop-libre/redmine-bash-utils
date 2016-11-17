@@ -21,17 +21,19 @@ die ()
   echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
-b=jrnl
-which $b 2>/dev/null >/dev/null
-OK="$?"
-[[ "$OK" -ne 0 ]] && die "not found: $b try: sudo pip install $b"
+COMMIT=1
+[[ -z "$1" ]] && die "EMPTY ISSUE"
+[[ ! -z "$2" ]] && COMMIT="$2"
 
-HEAD=$(jrnl -1 | head -1 | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
-ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+")
+BODY=$(git log -n"$COMMIT" --name-only)
+
+[[ -z "$BODY" ]] && die "EMPTY LOG"
+
+ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
 
 if [ -z "$ISSUE" ]
 then
-  # not found #ISSUE in header of journal
+  # not found #ISSUE in BODY
   if [ -z "$1" ]
   then
     die "empty issue"
@@ -40,12 +42,5 @@ then
   fi
 fi
 
-BODY=$(jrnl -1 | tail -n +2 | sed 's/^|//g')
-
-if [ -z "$BODY" ]
-then
-  redmine-add-comment "$ISSUE" "$HEAD \\n"
-else
-  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>$BODY</pre>"
-fi
+redmine-add-comment "$ISSUE" "<pre>$BODY</pre>"
 

@@ -18,7 +18,7 @@
 
 die ()
 {
-echo "ERROR $1" && exit 1
+echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 sql_get_user_id ()
@@ -204,16 +204,15 @@ $PROGRAM --mycnf ~/.my.cnf
 EOF
 )
 
-[[ $err -ne 0 ]] && die "Invalid: $COMMAND $EXAMPLE"
+[[ $err -ne 0 ]] && die "Invalid: $* $EXAMPLE"
 }
 
 GETOPT='getopt'
 PROGRAM="${0##*/}"
-COMMAND="$@"
 
 init "$@"
 
-DATE=`date +%Y-%m-%d\ %H:%M`
+DATE=$(date +%Y-%m-%d\ %H:%M)
 echo "date: $DATE"
 
 [[ -z "$MYCNF" ]] && MYCNF=$HOME'/.my.cnf'
@@ -224,30 +223,30 @@ MYSQL="mysql --defaults-file=$MYCNF -N"
 [[ -z $USER_NAME ]] && USER_NAME="mr.robot"
 echo "user_name: $USER_NAME"
 
-USER_ID=`sql_get_user_id "$USER_NAME" | $MYSQL`
+USER_ID=$(sql_get_user_id "$USER_NAME" | $MYSQL)
 [[ -z $USER_ID ]] && die "no valid user_id for $USER_NAME"
 echo "user_id: $USER_ID"
 
 [[ -z $PROJECT_NAME ]] && die "no valid project_name"
 echo "project_name: $PROJECT_NAME"
 
-PROJECT_ID=`sql_get_project_id "$PROJECT_NAME" | $MYSQL`
+PROJECT_ID=$(sql_get_project_id "$PROJECT_NAME" | $MYSQL)
 [[ -z $PROJECT_ID ]] && die "no valid project_id"
 echo "project_id: $PROJECT_ID"
 
 echo "from_status: $FROM_STATUS"
-FROM_STATUS_ID=`sql_get_status_id "$FROM_STATUS" | $MYSQL`
+FROM_STATUS_ID=$(sql_get_status_id "$FROM_STATUS" | $MYSQL)
 [[ -z $FROM_STATUS_ID ]] && die "no valid id for $FROM_STATUS"
 echo "from_status_id: $FROM_STATUS_ID"
 
 echo "to_status: $TO_STATUS"
-TO_STATUS_ID=`sql_get_status_id "$TO_STATUS" | $MYSQL`
+TO_STATUS_ID=$(sql_get_status_id "$TO_STATUS" | $MYSQL)
 [[ -z $TO_STATUS_ID ]] && die "no valid id for $TO_STATUS"
 echo "to_status_id: $TO_STATUS_ID"
 
 [[ -z $DAYS ]] && die "no valid days"
 
-WEEKDAY=`date +%u`
+WEEKDAY=$(date +%u)
 
 [[ "$WEEKDAY" -eq 6 ]] && DAYS=$((DAYS+1))
 [[ "$WEEKDAY" -eq 7 ]] && DAYS=$((DAYS+2))
@@ -260,7 +259,7 @@ UPDATE=/tmp/issues.redmine.sql
 ISSUES=/tmp/issues.redmine.log
 
 sql_get_issues | $MYSQL >"$ISSUES"
-TOTAL=`wc -l "$ISSUES" | awk '{print $1}'`
+TOTAL=$(wc -l "$ISSUES" | awk '{print $1}')
 echo "total issues: $TOTAL"
 
 [[ "$TOTAL" -eq 0 ]] && die "nothing to do :)"
@@ -275,40 +274,40 @@ awk '{print $1}' "$ISSUES" | while read i
 do
     if [ "$FROM_STATUS_ID" = "$TO_STATUS_ID" ]
     then
-        FROM_PRIORITY_ID=`sql_get_issue_priority_id $i | $MYSQL`
+        FROM_PRIORITY_ID=$(sql_get_issue_priority_id "$i" | $MYSQL)
         [[ -z "$FROM_PRIORITY_ID" ]] && die "empty FROM_PRIORITY_ID"
 
-        FROM_PRIORITY=`sql_get_priority $FROM_PRIORITY_ID | $MYSQL`
+        FROM_PRIORITY=$(sql_get_priority "$FROM_PRIORITY_ID" | $MYSQL)
         [[ -z "$FROM_PRIORITY" ]] && die "empty FROM_PRIORITY"
 
-        FROM_POSITION=`sql_get_priority_position $FROM_PRIORITY_ID | $MYSQL`
+        FROM_POSITION=$(sql_get_priority_position "$FROM_PRIORITY_ID" | $MYSQL)
         [[ -z "$FROM_POSITION" ]] && die "empty from_position"
 
-        TO_POSITION=$[ $FROM_POSITION + 1]
-        MAX_POSITION=`sql_get_max_priority_postition | $MYSQL`
+        TO_POSITION=$((FROM_POSITION + 1))
+        MAX_POSITION=$(sql_get_max_priority_postition | $MYSQL)
         [[ -z "$MAX_POSITION" ]] && die "empty max_position"
 
-        if [ $TO_POSITION -gt $MAX_POSITION ]
+        if [ "$TO_POSITION" -gt "$MAX_POSITION" ]
         then
             TO_POSITION=$MAX_POSITION
         fi
 
         [[ -z "$TO_POSITION" ]] && die "empty to_position"
 
-        TO_PRIORITY_ID=`sql_get_priority_by_position $TO_POSITION | $MYSQL`
+        TO_PRIORITY_ID=$(sql_get_priority_by_position "$TO_POSITION" | $MYSQL)
         [[ -z "$TO_PRIORITY_ID" ]] && die "empty TO_PRIORITY_ID"
 
-        TO_PRIORITY=`sql_get_priority $TO_PRIORITY_ID | $MYSQL`
+        TO_PRIORITY=$(sql_get_priority "$TO_PRIORITY_ID" | $MYSQL)
         [[ -z "$TO_PRIORITY" ]] && die "empty TO_PRIORITY"
 
         NOTES="After $DAYS of inactivity, change priority from: $FROM_PRIORITY to: $TO_PRIORITY"
 
-        if [ $FROM_PRIORITY_ID -eq $TO_PRIORITY_ID ]
+        if [ "$FROM_PRIORITY_ID" -eq "$TO_PRIORITY_ID" ]
         then
             continue
         else
-            echo "$i "$NOTES
-            sql_update_priority "$i" $TO_PRIORITY_ID >>$UPDATE
+            echo "$i $NOTES"
+            sql_update_priority "$i" "$TO_PRIORITY_ID" >>$UPDATE
             sql_insert_journal "$i" >>"$UPDATE"
         fi
     else
@@ -319,7 +318,7 @@ done
 
 [[ ! -e "$UPDATE" ]] && die "no valid $UPDATE"
 
-T=`wc -l "$UPDATE" | awk '{print $1}'`
+T=$(wc -l "$UPDATE" | awk '{print $1}')
 
 [[ "$T" -eq 0 ]] && die "empty file $UPDATE"
 

@@ -18,7 +18,7 @@
 
 die ()
 {
-  echo "ERROR $1" && exit 1
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 CONFIG="$HOME/.redmine.conf"
@@ -39,11 +39,24 @@ done)
 [[ ! -z "$DEFAULT_ASSIGNED_TO_ID" ]] && ASSIGNED_TO_ID="$DEFAULT_ASSIGNED_TO_ID"
 
 [[ -z "$1" ]] && die "empty ISSUE_ID"
+VALID_ISSUE_ID=$(echo "$1" | egrep "^[0-9]+$")
+
+[[ "$VALID_ISSUE_ID" != "$1" ]] && die "invalid ISSUE_ID"
 ISSUE_ID="$1"
 
-[[ ! -z "$2" ]] && ASSIGNED_TO_ID="$2"
-
-# FIXME validate ASSIGNED_TO_ID
+if [ ! -z "$2" ]
+then
+  VALID_USER_ID=$(echo "$2" | egrep "^[0-9]+$")
+  if [ "$VALID_USER_ID" = "$2" ]
+  then
+    ASSIGNED_TO_ID="$2"
+  else
+    U=$(echo "$2" | tr '[:lower:]' '[:upper:]')
+    ID=$(egrep "^($U):" "$CONFIG" | cut -d: -f2 | egrep -o "[0-9]+")
+    [[ -z "$ID" ]] && die "invalid USERNAME"
+    ASSIGNED_TO_ID="$ID"
+  fi
+fi
 
 JSON_FILE='/tmp/new.json'
 

@@ -21,26 +21,25 @@ die ()
   echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
-b=jrnl
-which $b 2>/dev/null >/dev/null
-OK="$?"
-[[ "$OK" -ne 0 ]] && die "not found: $b try: sudo pip install $b"
+[[ -z "$1" ]] && die "EMPTY FILE"
+[[ ! -e "$1" ]] && die "NOT FOUND FILE $2"
+FILE="$1"
 
-HEAD=$(jrnl -1 | head -1 | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+HEAD=$(head -1 "$FILE" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
 ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+")
 
 if [ -z "$ISSUE" ]
 then
-  # not found #ISSUE in header of journal
-  if [ -z "$1" ]
+  # not found #ISSUE in header of file
+  if [ -z "$2" ]
   then
     die "empty issue"
   else
-    ISSUE="$1"
+    ISSUE="$2"
   fi
 fi
 
-BODY=$(jrnl -1 | tail -n +2 | sed 's/^|//g')
+BODY=$(tail -n +2 "$FILE")
 
 if [ -z "$BODY" ]
 then

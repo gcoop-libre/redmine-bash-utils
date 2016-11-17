@@ -18,7 +18,7 @@
 
 die ()
 {
-  echo "ERROR $1" && exit 1
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 CONFIG="$HOME/.redmine.conf"
@@ -67,10 +67,10 @@ EOF
 )
 fi
 
-echo $JSON >$JSON_FILE
+echo "$JSON" > "$JSON_FILE"
 
 H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
 
-echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" $URL | bash
+echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash

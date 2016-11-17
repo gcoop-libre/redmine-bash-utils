@@ -18,7 +18,7 @@
 
 die ()
 {
-echo "ERROR $1" && exit 1
+echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 sql_get_user_id ()
@@ -136,7 +136,7 @@ COMMAND="$@"
 
 init "$@"
 
-DATE=`date +%Y-%m-%d\ %H:%M`
+DATE=$(date +%Y-%m-%d\ %H:%M)
 echo "date: $DATE"
 
 [[ -z "$MYCNF" ]] && MYCNF=$HOME'/.my.cnf'
@@ -147,21 +147,20 @@ MYSQL="mysql --defaults-file=$MYCNF -N"
 [[ -z $USER_NAME ]] && USER_NAME="mr.robot"
 echo "user_name: $USER_NAME"
 
-USER_ID=`sql_get_user_id "$USER_NAME" | $MYSQL`
+USER_ID=$(sql_get_user_id "$USER_NAME" | $MYSQL)
 [[ -z $USER_ID ]] && die "no valid user_id for $USER_NAME"
 echo "user_id: $USER_ID"
 
-UPDATE=/tmp/issues.redmine.sql
 TMP=/tmp/tmp.redmine.log
 
-sql_get_time_trackers $USER_ID | $MYSQL | tee $TMP
-TOTAL_TRACKERS=`wc -l $TMP | awk '{print $1}'`
+sql_get_time_trackers "$USER_ID" | $MYSQL | tee "$TMP"
+TOTAL_TRACKERS=$(wc -l "$TMP" | awk '{print $1}')
 echo "total trackers: $TOTAL_TRACKERS"
 
-sql_get_time_entries $USER_ID | $MYSQL | tee $TMP
-TOTAL_ENTRIES=`wc -l $TMP | awk '{print $1}'`
+sql_get_time_entries "$USER_ID" | $MYSQL | tee "$TMP"
+TOTAL_ENTRIES=$(wc -l "$TMP" | awk '{print $1}')
 echo "total entries: $TOTAL_ENTRIES"
 
-[[ "$TOTAL_TRACKERS" -gt 0 ]] && sql_delete_time_trackers $USER_ID | $MYSQL
-[[ "$TOTAL_ENTRIES" -gt 0 ]] && sql_delete_time_entries $USER_ID | $MYSQL
+[[ "$TOTAL_TRACKERS" -gt 0 ]] && sql_delete_time_trackers "$USER_ID" | $MYSQL
+[[ "$TOTAL_ENTRIES" -gt 0 ]] && sql_delete_time_entries "$USER_ID" | $MYSQL
 

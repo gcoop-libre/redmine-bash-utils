@@ -26,26 +26,33 @@ which $b 2>/dev/null >/dev/null
 OK="$?"
 [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo pip install $b"
 
-HEAD=$(jrnl -1 | head -1 | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+[[ -z "$1" ]] && die "empty MINUTES"
+VALID_MINUTES=$(echo "$1" | egrep -o "^[0-9]+$")
+
+[[ "$VALID_MINUTES" != "$1" ]] && die "invalid MINUTES: $MINUTES"
+MINUTES="$1"
+
+[[ -z "$2" ]] && die "empty FILENAME"
+FILE="$2"
+
+[[ ! -e "$FILE" ]] && die "not found $FILE"
+
+HEAD=$(head -1 "$FILE")
 ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+")
+COMMENTS=$(echo "$HEAD" | sed 's/^[0-9:\ \-]\+#[0-9]\+\ //g')
+
+[[ -z "$COMMENTS" ]] && die "empty COMMENTS"
 
 if [ -z "$ISSUE" ]
 then
   # not found #ISSUE in header of journal
-  if [ -z "$1" ]
+  if [ -z "$3" ]
   then
     die "empty issue"
   else
-    ISSUE="$1"
+    ISSUE="$3"
   fi
 fi
 
-BODY=$(jrnl -1 | tail -n +2 | sed 's/^|//g')
-
-if [ -z "$BODY" ]
-then
-  redmine-add-comment "$ISSUE" "$HEAD \\n"
-else
-  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>$BODY</pre>"
-fi
+redmine-time-entry "$MINUTES" "$ISSUE" "$COMMENTS"
 

@@ -18,7 +18,7 @@
 
 die ()
 {
-  echo "ERROR $1" && exit 1
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 CONFIG="$HOME/.redmine.conf"
@@ -40,7 +40,14 @@ done)
 ISSUE_ID="$1"
 
 [[ -z "$2" ]] && die "empty NOTES"
-NOTES="$2"
+
+NOTES=$(
+echo "$2" \
+  | tr '"' "'" \
+  | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
+  | sed ':a;N;$!ba;s/\n/\\n/g' \
+  | sed -e 's/\r//g'
+)
 
 JSON_FILE='/tmp/new.json'
 
@@ -53,10 +60,10 @@ JSON=$(cat << EOF
 EOF
 )
 
-echo "$JSON" >$JSON_FILE
+echo "$JSON" > "$JSON_FILE"
 
 H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
-
-echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" $URL | bash
+echo "#$ISSUE_ID $NOTES" | cut -d'\' -f1
+echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash

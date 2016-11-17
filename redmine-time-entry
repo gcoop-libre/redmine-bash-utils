@@ -18,22 +18,31 @@
 
 die ()
 {
-  echo "ERROR $1" && exit 1
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
 }
 
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
-[[ -z "$1" ]] && die "empty ISSUE_ID"
-[[ -z "$2" ]] && die "empty MINUTES"
+[[ -z "$1" ]] && die "empty MINUTES"
+[[ -z "$2" ]] && die "empty ISSUE_ID"
 [[ -z "$3" ]] && die "empty COMMENTS"
 
-ISSUE_ID="$1"
-MINUTES="$2"
-HOURS=`echo "scale = 10;$MINUTES/60" | bc | awk '{printf "%0.2f",$1}'`
+VALID_MINUTES=$(echo "$1" | egrep -o "^[0-9]+$")
+[[ "$VALID_MINUTES" != "$1" ]] && die "invalid MINUTES: $MINUTES"
+MINUTES="$1"
 
-COMMENTS="$3"
-SPENT_ON=`date +%Y-%m-%d`
+ISSUE_ID=$(echo "$2" | egrep -o "^[0-9]+$")
+HOURS=$(echo "scale = 10;$MINUTES/60" | bc | awk '{printf "%0.2f",$1}')
+
+COMMENTS=$(
+echo "$3" \
+  | tr '"' "'" \
+  | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
+  | sed ':a;N;$!ba;s/\n/\\n/g'
+)
+
+SPENT_ON=$(date +%Y-%m-%d)
 
 export http_proxy=""
 export https_proxy=""
@@ -62,13 +71,13 @@ JSON=$(cat << EOF
 EOF
 )
 
-echo $JSON >$JSON_FILE
+echo "$JSON" > "$JSON_FILE"
 
 H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/time_entries.json"
-
-echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" $URL \
+echo "$MINUTES #$ISSUE_ID '$COMMENTS'"
+echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" "$URL" \
     | bash \
     | python -mjson.tool | egrep "(hours|created)"
 
