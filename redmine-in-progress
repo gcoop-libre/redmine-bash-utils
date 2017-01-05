@@ -49,7 +49,8 @@ then
 JSON=$(cat << EOF
 {
     "issue": {
-      "status_id": $STATUS_IN_PROGRESS
+      "status_id": $STATUS_IN_PROGRESS,
+      "done_ratio": 1
     }
 }
 EOF
@@ -59,6 +60,7 @@ JSON=$(cat << EOF
 {
     "issue": {
       "status_id": $STATUS_IN_PROGRESS,
+      "done_ratio": 1,
       "notes": "$NOTES"
     }
 }
