@@ -22,7 +22,6 @@ die ()
 }
 
 COMMIT=1
-[[ -z "$1" ]] && die "EMPTY ISSUE"
 [[ ! -z "$2" ]] && COMMIT="$2"
 
 BODY=$(git log -n"$COMMIT" --name-only)
