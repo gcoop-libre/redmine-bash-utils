@@ -37,6 +37,9 @@ done)
 [[ -z "$API_KEY" ]] && die "empty KEY"
 
 [[ -z "$1" ]] && die "empty ISSUE_ID"
+VALID_ISSUE_ID=$(echo "$1" | egrep -o "^[0-9]+$")
+
+[[ "$VALID_ISSUE_ID" != "$1" ]] && die "invalid ISSUE_ID"
 ISSUE_ID="$1"
 
 [[ ! -z "$2" ]] && NOTES="$2"
