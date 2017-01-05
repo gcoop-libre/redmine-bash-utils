@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2016 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
+}
+
+b=git
+which $b 2>/dev/null >/dev/null
+OK="$?"
+[[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
+
+COMMIT=1
+[[ ! -z "$3" ]] && COMMIT="$3"
+BODY=$(git log -n"$COMMIT" --name-only)
+
+[[ -z "$BODY" ]] && die "EMPTY LOG"
+
+ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
+
+if [ ! -z "$1" ]
+then
+  VALID_MINUTES=$(echo "$1" | egrep -o "^[0-9]+$")
+  [[ -z "$VALID_MINUTES" ]] && die "empty MINUTES"
+  [[ "$VALID_MINUTES" != "$1" ]] && die "invalid MINUTES: $MINUTES"
+  MINUTES="$1"
+fi
+
+TIME=$(echo "$BODY" | egrep -o "^\s*@ [0-9]{2}:[0-9]{2} hs" | awk '{print $2}' | egrep -o "[0-9]{2}:[0-9]{2}")
+
+if [ ! -z "$TIME" ]
+then
+  HH=$(echo "$TIME" | cut -d : -f1)
+  MM=$(echo "$TIME" | cut -d : -f2)
+  H2M=$((HH*60+MM))
+  VALID_MINUTES=$(echo "$H2M" | egrep -o "^[0-9]+$")
+  [[ -z "$VALID_MINUTES" ]] && die "empty MINUTES"
+  MINUTES="$H2M"
+  [[ -z "$MINUTES" ]] && die "invalid MINUTES in jrnl"
+fi
+
+ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
+
+if [ -z "$ISSUE" ]
+then
+  # not found #ISSUE in header of journal
+  if [ -z "$2" ]
+  then
+    die "empty issue"
+  else
+    ISSUE="$2"
+  fi
+fi
+SUBJECT=$(echo "$BODY" | tail -n+5 | head -1 | sed 's/^\s*//g' | sed 's/\s+$//g')
+
+[[ -z "$SUBJECT" ]] && die "empty SUBJECT"
+
+redmine-time-entry "$MINUTES" "$ISSUE" "$SUBJECT"
+
