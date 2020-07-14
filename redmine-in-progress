@@ -24,9 +24,6 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
-export http_proxy=""
-export https_proxy=""
-
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
     str="$key='$val'"
@@ -36,11 +33,29 @@ done)
 [[ -z "$STATUS_IN_PROGRESS" ]] && die "STATUS_IN_PROGRESS not defined"
 [[ -z "$API_URL" ]] && die "empty URL"
 [[ -z "$API_KEY" ]] && die "empty KEY"
+[[ ! -z "$DEFAULT_ASSIGNED_TO_ID" ]] && ASSIGNED_TO_ID="$DEFAULT_ASSIGNED_TO_ID"
 
 [[ -z "$1" ]] && die "empty ISSUE_ID"
+VALID_ISSUE_ID=$(echo "$1" | egrep "^[0-9]+$")
+
+[[ "$VALID_ISSUE_ID" != "$1" ]] && die "invalid ISSUE_ID"
 ISSUE_ID="$1"
 
 [[ ! -z "$2" ]] && NOTES="$2"
+
+if [[ ! -z "$3" ]]
+then
+  VALID_USER_ID=$(echo "$3" | egrep "^[0-9]+$")
+  if [[ "$VALID_USER_ID" = "$3" ]]
+  then
+    ASSIGNED_TO_ID="$3"
+  else
+    U=$(echo "$3" | tr '[:lower:]' '[:upper:]')
+    ID=$(egrep "^($U):" "$CONFIG" | cut -d: -f2 | egrep -o "[0-9]+")
+    [[ -z "$ID" ]] && die "invalid USERNAME"
+    ASSIGNED_TO_ID="$ID"
+  fi
+fi
 
 JSON_FILE='/tmp/new.json'
 
@@ -50,6 +65,7 @@ JSON=$(cat << EOF
 {
     "issue": {
       "status_id": $STATUS_IN_PROGRESS,
+      "assigned_to_id": $ASSIGNED_TO_ID,
       "done_ratio": 1
     }
 }
@@ -60,6 +76,7 @@ JSON=$(cat << EOF
 {
     "issue": {
       "status_id": $STATUS_IN_PROGRESS,
+      "assigned_to_id": $ASSIGNED_TO_ID,
       "done_ratio": 1,
       "notes": "$NOTES"
     }

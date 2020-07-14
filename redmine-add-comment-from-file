@@ -22,16 +22,16 @@ die ()
 }
 
 [[ -z "$1" ]] && die "EMPTY FILE"
-[[ ! -e "$1" ]] && die "NOT FOUND FILE $2"
+[[ ! -e "$1" ]] && die "NOT FOUND FILE $1"
 FILE="$1"
 
 HEAD=$(head -1 "$FILE" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
 ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+")
 
-if [ -z "$ISSUE" ]
+if [[ -z "$ISSUE" ]]
 then
   # not found #ISSUE in header of file
-  if [ -z "$2" ]
+  if [[ -z "$2" ]]
   then
     die "empty issue"
   else
@@ -39,12 +39,24 @@ then
   fi
 fi
 
-BODY=$(tail -n +2 "$FILE")
+BODY=$(mktemp)
+tail -n +2 "$FILE" > "$BODY"
+SIZE=$(wc -c "$BODY" | awk '{print $1}')
+MAX=71680
 
-if [ -z "$BODY" ]
+if [[ "$SIZE" -ge "$MAX" ]]
 then
-  redmine-add-comment "$ISSUE" "$HEAD \\n"
+  split -b 71680 -d "$BODY" .tmpredmine
+  pwd
+  wc .tmpredmine*
+  pwd
+  for B in .tmpredmine*
+  do
+    redmine-add-comment "$ISSUE" "$HEAD \\n<pre>\\n$(cat $B)\\n</pre>\\n"
+    rm -f "$B"
+  done
 else
-  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>$BODY</pre>"
+  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>\\n$(cat $BODY)\\n</pre>\\n"
 fi
 
+rm -f "$BODY"

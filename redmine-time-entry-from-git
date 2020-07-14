@@ -34,7 +34,7 @@ BODY=$(git log -n"$COMMIT" --name-only)
 
 ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
 
-if [ ! -z "$1" ]
+if [[ ! -z "$1" ]]
 then
   VALID_MINUTES=$(echo "$1" | egrep -o "^[0-9]+$")
   [[ -z "$VALID_MINUTES" ]] && die "empty MINUTES"
@@ -44,7 +44,7 @@ fi
 
 TIME=$(echo "$BODY" | egrep -o "^\s*@ [0-9]{2}:[0-9]{2} hs" | awk '{print $2}' | egrep -o "[0-9]{2}:[0-9]{2}")
 
-if [ ! -z "$TIME" ]
+if [[ ! -z "$TIME" ]]
 then
   HH=$(echo "$TIME" | cut -d : -f1 | sed -e 's/^0\+//g')
   MM=$(echo "$TIME" | cut -d : -f2 | sed -e 's/^0\+//g')
@@ -59,10 +59,10 @@ fi
 
 ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
 
-if [ -z "$ISSUE" ]
+if [[ -z "$ISSUE" ]]
 then
   # not found #ISSUE in header of journal
-  if [ -z "$2" ]
+  if [[ -z "$2" ]]
   then
     die "empty issue"
   else

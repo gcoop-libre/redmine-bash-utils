@@ -32,28 +32,24 @@ done)
 
 [[ -z "$API_URL" ]] && die "empty URL"
 [[ -z "$API_KEY" ]] && die "empty KEY"
+[[ -z "$STATUS_FIXED" ]] && die "undefined STATUS_FIXED"
+[[ ! -z "$DEFAULT_ASSIGNED_TO_ID" ]] && ASSIGNED_TO_ID="$DEFAULT_ASSIGNED_TO_ID"
 
 [[ -z "$1" ]] && die "empty ISSUE_ID"
+VALID_ISSUE_ID=$(echo "$1" | egrep -o "^[0-9]+$")
+
+[[ "$VALID_ISSUE_ID" != "$1" ]] && die "invalid ISSUE_ID"
 ISSUE_ID="$1"
 
-[[ -z "$2" ]] && die "empty NOTES"
+[[ -z "$2" ]] && die "empty SUBJECT"
+SUBJECT="$(echo "$2" | tr -d '"')"
 
-NOTES=$(
-echo "$2"                           \
-  | expand -t 2                     \
-  | sed 's/"/\\"/g'                 \
-  | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
-  | sed ':a;N;$!ba;s/\n/\\n/g'      \
-  | sed -e 's/\r//g'
-)
-
-  #| tr '"' "'"                      \
-JSON_FILE='/tmp/new.json'
+JSON_FILE=$(mktemp)
 
 JSON=$(cat << EOF
 {
     "issue": {
-      "notes": "$NOTES"
+      "subject": "$SUBJECT"
     }
 }
 EOF
@@ -64,9 +60,8 @@ echo "$JSON" > "$JSON_FILE"
 H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
-echo "#$ISSUE_ID $NOTES" | cut -d'\' -f1
 
 CURL_PROXY=''
 [[ ! -z "$REDMINE_PROXY_SOCKS" ]] && CURL_PROXY="--socks5 $REDMINE_PROXY_SOCKS"
-# FIXME verify https_proxy
-echo curl $CURL_PROXY -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash
+
+echo curl $CURL_PROXY -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash && rm -f "$JSON_FILE"

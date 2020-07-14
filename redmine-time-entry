@@ -36,16 +36,14 @@ ISSUE_ID=$(echo "$2" | egrep -o "^[0-9]+$")
 HOURS=$(echo "scale = 10;$MINUTES/60" | bc | awk '{printf "%0.2f",$1}')
 
 COMMENTS=$(
-echo "$3" \
-  | tr '"' "'" \
+echo "$3"                           \
+  | tr '"' "'"                      \
   | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
-  | sed ':a;N;$!ba;s/\n/\\n/g'
+  | sed ':a;N;$!ba;s/\n/\\n/g'      \
+  | cut -c -255
 )
 
 SPENT_ON=$(date +%Y-%m-%d)
-
-export http_proxy=""
-export https_proxy=""
 
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
@@ -77,7 +75,11 @@ H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/time_entries.json"
 echo "$MINUTES #$ISSUE_ID '$COMMENTS'"
-echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" "$URL" \
+
+CURL_PROXY=''
+[[ ! -z "$REDMINE_PROXY_SOCKS" ]] && CURL_PROXY="--socks5 $REDMINE_PROXY_SOCKS"
+
+echo curl $CURL_PROXY -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" "$URL" \
     | bash \
     | python -mjson.tool | egrep "(hours|created)"
 

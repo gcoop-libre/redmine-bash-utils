@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2019 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+die ()
+{
+  echo -e "\\e[31m[ERROR]\\e[0m $1" && exit 1
+}
+
+[[ -z "$1" ]] && die 'EMPTY ISSUE'
+ISSUE="$1"
+
+DATE="$(date +%F)"
+[[ ! -z "$2" ]] && DATE="$2"
+
+REGEXP='@ [0-9]+:[0-9]+ hs'
+SHOW='git show -p --name-only'
+LOG="$(mktemp)"
+
+git log --topo-order --date=iso --pretty --format="%h %ad %ae %s" \
+  | sed s/:[0-9]*\ -[0-9]*\ /\ /g \
+  | sed s/@[a-z.\(\)]*/\\t/g \
+  | grep "$USER" \
+  | grep "$DATE" \
+  | tac          \
+  | while read -r HASH _ _ _ ONELINE
+    do
+      [[ -z "$HASH" ]] && die "EMPTY HASH"
+
+      $SHOW "$HASH" > "$LOG"
+      TIME=$(grep -oE "$REGEXP" "$LOG" | tr -d '@ hs' | tail -1)
+			MINUTES="$(time2minutes "$TIME")"
+
+      redmine-add-comment-from-git "$ISSUE" "$HASH"
+      sleep 1
+      if [[ ! -z "$MINUTES" ]]
+      then
+        redmine-time-entry "$MINUTES" "$ISSUE" "$ONELINE"
+      fi
+    done
+
+rm -f "$LOG" 2>/dev/null

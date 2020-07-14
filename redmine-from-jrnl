@@ -24,36 +24,15 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
-eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
-do
-    str="$key='$val'"
-    echo "$str"
-done)
+ISSUE=$(redmine-add-comment-from-jrnl | egrep -o "#[0-9]+\ " | head -1)
+OK=$?
+[[ "$OK" -ne 0 ]] && die "error when add comment"
+[[ -z "$ISSUE" ]] && die "empty ISSUE"
 
-[[ -z "$API_URL" ]] && die "empty URL"
-[[ -z "$API_KEY" ]] && die "empty KEY"
+ISSUE_ID=$(echo "$ISSUE" | egrep -o "[0-9]+" | head -1)
+[[ -z "$ISSUE" ]] && die "empty ISSUE_ID"
 
-[[ -z "$1" ]] && die "empty ISSUE_ID"
-ISSUE_ID="$1"
+VALID_ISSUE_ID=$(echo "$ISSUE_ID" | egrep -o "^[0-9]+$" | head -1)
+[[ "$VALID_ISSUE_ID" != "$ISSUE_ID" ]] && die "invalid ISSUE_ID"
 
-[[ -z "$2" ]] && die "empty PARENT_ID"
-PARENT_ID="$2"
-
-JSON_FILE='/tmp/new.json'
-
-JSON=$(cat << EOF
-{
-    "issue": {
-      "parent_issue_id": $PARENT_ID
-    }
-}
-EOF
-)
-
-echo "$JSON" > "$JSON_FILE"
-
-H1='"Content-Type: application/json"'
-H2='"X-Redmine-API-Key: '$API_KEY'"'
-URL="$API_URL/issues/${ISSUE_ID}.json"
-
-echo curl -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash
+redmine-time-entry-from-jrnl

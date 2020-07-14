@@ -27,12 +27,12 @@ OK="$?"
 [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo pip install $b"
 
 HEAD=$(jrnl -1 | head -1 | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
-ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+")
+ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | head -1 | egrep -o "[0-9]+")
 
-if [ -z "$ISSUE" ]
+if [[ -z "$ISSUE" ]]
 then
   # not found #ISSUE in header of journal
-  if [ -z "$1" ]
+  if [[ -z "$1" ]]
   then
     die "empty issue"
   else
@@ -42,10 +42,9 @@ fi
 
 BODY=$(jrnl -1 | tail -n +2 | sed 's/^|//g')
 
-if [ -z "$BODY" ]
+if [[ -z "$BODY" ]]
 then
   redmine-add-comment "$ISSUE" "$HEAD \\n"
 else
-  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>$BODY</pre>"
+  redmine-add-comment "$ISSUE" "$HEAD \\n<pre>\\n${BODY}\\n</pre>\\n"
 fi
-

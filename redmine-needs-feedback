@@ -24,9 +24,6 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
-export http_proxy=""
-export https_proxy=""
-
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
     str="$key='$val'"

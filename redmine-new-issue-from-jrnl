@@ -33,8 +33,15 @@ done)
 [[ -z "$API_URL" ]] && die "empty URL"
 [[ -z "$API_KEY" ]] && die "empty KEY"
 
-[[ -z "$1" ]] && die "empty SUBJECT"
-SUBJECT=$(echo "$1" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+if [[ -z "$1" ]]
+then
+  HEAD=$(jrnl -1 | head -1)
+else
+  die "empty SUBJECT"
+fi
+
+[[ -z "$HEAD" ]] && die "empty HEAD"
+SUBJECT=$(echo "$HEAD" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
 
 # load default variables
 [[ ! -z "$DEFAULT_PRIORITY_ID" ]]    && PRIORITY_ID="$DEFAULT_PRIORITY_ID"
@@ -53,38 +60,37 @@ SUBJECT=$(echo "$1" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
 [[ ! -z "$REDMINE_STATUS_ID" ]]      && STATUS_ID="$REDMINE_STATUS_ID"
 [[ ! -z "$REDMINE_TRACKER_ID" ]]     && TRACKER_ID="$REDMINE_TRACKER_ID"
 
-if [ -z "$2" ]
-then
-  DESCRIPTION=''
-else
-  DESCRIPTION=$(
-  echo "$2" \
-    | tr '"' "'" \
-    | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
-    | sed ':a;N;$!ba;s/\n/\\n/g'
-  )
-fi
+BODY=$(jrnl -1 | tail -n +2)
+
+[[ -z "$BODY" ]] && die "empty BODY"
+
+DESCRIPTION=$(
+echo "<pre>$BODY</pre>" \
+  | tr '"' "'" \
+  | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
+  | sed ':a;N;$!ba;s/\n/\\n/g'
+)
 
 # argument variables overwrite enviroment variables
-[[ ! -z "$3" ]] && PRIORITY_ID="$3"
+[[ ! -z "$2" ]] && PRIORITY_ID="$2"
 
 # allow username or user_id
-if [ ! -z "$4" ]
+if [ ! -z "$3" ]
 then
-  VALID_USER_ID=$(echo "$4" | egrep "^[0-9]+$")
-  if [ "$VALID_USER_ID" = "$4" ]
+  VALID_USER_ID=$(echo "$3" | egrep "^[0-9]+$")
+  if [ "$VALID_USER_ID" = "$3" ]
   then
-    ASSIGNED_TO_ID="$4"
+    ASSIGNED_TO_ID="$3"
   else
-    U=$(echo "$4" | tr '[:lower:]' '[:upper:]')
+    U=$(echo "$3" | tr '[:lower:]' '[:upper:]')
     ID=$(egrep "^($U):" "$CONFIG" | cut -d: -f2 | egrep -o "[0-9]+")
     [[ -z "$ID" ]] && die "invalid USERNAME"
     ASSIGNED_TO_ID="$ID"
   fi
 fi
 
-[[ ! -z "$5" ]] && PARENT_ID="$5"
-[[ ! -z "$6" ]] && PROJECT_ID="$6"
+[[ ! -z "$4" ]] && PARENT_ID="$4"
+[[ ! -z "$5" ]] && PROJECT_ID="$5"
 
 [[ "$PRIORITY_ID" -lt "$PRIORITY_MIN_ID" ]] && die "invalid PRIORITY_ID"
 [[ "$PRIORITY_ID" -gt "$PRIORITY_MAX_ID" ]] && die "invalid PRIORITY_ID"
@@ -93,7 +99,7 @@ fi
 
 JSON_FILE='/tmp/new.json'
 
-if [ -z "$PARENT_ID" ]
+if [[ -z "$PARENT_ID" ]]
 then
 JSON=$(cat << EOF
 {
@@ -104,7 +110,6 @@ JSON=$(cat << EOF
       "assigned_to_id": $ASSIGNED_TO_ID,
       "status_id": $STATUS_ID,
       "tracker_id": $TRACKER_ID,
-			"category_id": $CATEGORY_ID,
       "description": "$DESCRIPTION"
     }
 }
@@ -121,7 +126,6 @@ JSON=$(cat << EOF
       "status_id": $STATUS_ID,
       "tracker_id": $TRACKER_ID,
       "parent_issue_id": $PARENT_ID,
-			"category_id": $CATEGORY_ID,
       "description": "$DESCRIPTION"
     }
 }
@@ -135,15 +139,12 @@ H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues.json"
 
-CURL_PROXY=''
-[[ ! -z "$REDMINE_PROXY_SOCKS" ]] && CURL_PROXY="--socks5 $REDMINE_PROXY_SOCKS"
-
-echo curl $CURL_PROXY -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" "$URL" \
-    | bash \
-    | python -mjson.tool \
-    | egrep '"id"' \
-    | tr -d ',"' \
-    | sed 's/^ \+//g' \
-    | awk '{print $2}' \
-    | sort -nr \
+echo curl -s -k -H "$H1" -X POST --data "@$JSON_FILE" -H "$H2" "$URL" \
+    | bash                                                            \
+    | python -mjson.tool                                              \
+    | egrep '"id"'                                                    \
+    | tr -d ',"'                                                      \
+    | sed 's/^ \+//g'                                                 \
+    | awk '{print $2}'                                                \
+    | sort -nr                                                        \
     | head -1

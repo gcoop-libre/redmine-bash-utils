@@ -31,9 +31,6 @@ do
   [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
 done
 
-export http_proxy=""
-export https_proxy=""
-
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
     str="$key='$val'"
@@ -57,12 +54,15 @@ parent: .issue.parent,
 tracker: .issue.tracker.name,
 status: .issue.status.name,
 priority: .issue.priority.name,
+project: .issue.project.name,
 subject: .issue.subject,
 updated_on: .issue.updated_on,
-description: .issue.description,
 spent_hours: .issue.spent_hours,
 done_ratio: .issue.done_ratio,
-assigned_to: .issue.assigned_to
+assigned_to: .issue.assigned_to,
+category: .issue.category,
+custom_fields: .issue.custom_fields,
+description: .issue.description
 }
 EOF
 )
@@ -71,7 +71,4 @@ echo
 echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" \
   | bash \
   | jq ". | $JQ" \
-  | sed 's/\\r\\n/\n/g' \
-  | sed 's/\\t/\t/g'
-
-
+  | jq .

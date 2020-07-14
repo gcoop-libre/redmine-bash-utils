@@ -31,9 +31,6 @@ do
   [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
 done
 
-export http_proxy=""
-export https_proxy=""
-
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
     str="$key='$val'"

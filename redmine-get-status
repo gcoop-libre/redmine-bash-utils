@@ -24,6 +24,13 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
+for b in curl jq
+do
+  which $b 2>/dev/null >/dev/null
+  OK="$?"
+  [[ "$OK" -ne 0 ]] && die "not found: $b try: sudo apt-get install $b"
+done
+
 eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
 do
     str="$key='$val'"
@@ -36,37 +43,12 @@ done)
 [[ -z "$1" ]] && die "empty ISSUE_ID"
 ISSUE_ID="$1"
 
-[[ -z "$2" ]] && die "empty NOTES"
-
-NOTES=$(
-echo "$2"                           \
-  | expand -t 2                     \
-  | sed 's/"/\\"/g'                 \
-  | sed 's/\x1B\[[0-9;]*[JKmsu]//g' \
-  | sed ':a;N;$!ba;s/\n/\\n/g'      \
-  | sed -e 's/\r//g'
-)
-
-  #| tr '"' "'"                      \
-JSON_FILE='/tmp/new.json'
-
-JSON=$(cat << EOF
-{
-    "issue": {
-      "notes": "$NOTES"
-    }
-}
-EOF
-)
-
-echo "$JSON" > "$JSON_FILE"
-
 H1='"Content-Type: application/json"'
 H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
-echo "#$ISSUE_ID $NOTES" | cut -d'\' -f1
 
-CURL_PROXY=''
-[[ ! -z "$REDMINE_PROXY_SOCKS" ]] && CURL_PROXY="--socks5 $REDMINE_PROXY_SOCKS"
-# FIXME verify https_proxy
-echo curl $CURL_PROXY -s -k -H "$H1" -X PUT --data "@$JSON_FILE" -H "$H2" "$URL" | bash
+JQ='.issue.status.name'
+
+echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" \
+  | bash \
+  | jq -r "$JQ"

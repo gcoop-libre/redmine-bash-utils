@@ -22,18 +22,22 @@ die ()
 }
 
 COMMIT=1
-[[ ! -z "$2" ]] && COMMIT="$2"
-
-BODY=$(git log -n"$COMMIT" --name-only)
+# FIXME diff numbers of commits from hash
+if [[ ! -z "$2" ]]
+then
+  BODY="$(git show -p --name-only "$2")"
+else
+  BODY=$(git log -n"$COMMIT" --name-only)
+fi
 
 [[ -z "$BODY" ]] && die "EMPTY LOG"
 
 ISSUE=$(echo "$BODY" | egrep -wo "#[0-9]+" | egrep -o "[0-9]+" | head -1)
 
-if [ -z "$ISSUE" ]
+if [[ -z "$ISSUE" ]]
 then
   # not found #ISSUE in BODY
-  if [ -z "$1" ]
+  if [[ -z "$1" ]]
   then
     die "empty issue"
   else
@@ -41,5 +45,17 @@ then
   fi
 fi
 
-redmine-add-comment "$ISSUE" "<pre>$BODY</pre>"
+SC="$(git log -1 --format='%h')"
+LC="$(git log -1 --format='%H')"
+ORIGIN="$(git remote get-url origin)"
+
+if [[ "$ORIGIN" =~ .*:/.* ]]
+then
+  URL="https://$(echo "$ORIGIN" | tr -d ':')"
+else
+  URL="$ORIGIN"
+fi
+
+LINK="$(printf "commit: \"%s\":%s/commit/%s\n" "$SC" "$URL" "$LC")"
+redmine-add-comment "$ISSUE" "<pre>$BODY</pre>\\n\\n${LINK}"
 
