@@ -49,13 +49,12 @@ SC="$(git log -1 --format='%h')"
 LC="$(git log -1 --format='%H')"
 ORIGIN="$(git remote get-url origin)"
 
-if [[ "$ORIGIN" =~ .*:/.* ]]
+URL="$ORIGIN"
+
+if [[ "$ORIGIN" =~ .*:.* ]]
 then
-  URL="https://$(echo "$ORIGIN" | tr -d ':')"
-else
-  URL="$ORIGIN"
+  URL="https://$(echo "$ORIGIN" | sed 's/git@//g' | tr ':' '/' | sed 's/\/\//\//g')"
 fi
 
 LINK="$(printf "commit: \"%s\":%s/commit/%s\n" "$SC" "$URL" "$LC")"
 redmine-add-comment "$ISSUE" "<pre>$BODY</pre>\\n\\n${LINK}"
-
