@@ -22,12 +22,16 @@ die ()
 }
 
 COMMIT=1
-# FIXME diff numbers of commits from hash
 if [[ ! -z "$2" ]]
 then
   BODY="$(git show -p --name-only "$2")"
+  SC="$2"
+  LC="$(git log -1 --format='%H' "$2")"
 else
   BODY=$(git log -n"$COMMIT" --name-only)
+# FIXME diff numbers of commits from hash
+  SC="$(git log -1 --format='%h')"
+  LC="$(git log -1 --format='%H')"
 fi
 
 [[ -z "$BODY" ]] && die "EMPTY LOG"
@@ -45,8 +49,6 @@ then
   fi
 fi
 
-SC="$(git log -1 --format='%h')"
-LC="$(git log -1 --format='%H')"
 ORIGIN="$(git remote get-url origin)"
 
 URL="$ORIGIN"
