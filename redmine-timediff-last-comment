@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# This script comes with ABSOLUTELY NO WARRANTY, use at own risk
+# Copyright (C) 2021 Osiris Alejandro Gomez <osiris@gcoop.coop>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# shellcheck disable=SC1090
+
+DIR_BIN="$(dirname "$0")" && source "$DIR_BIN/redmine-common"
+
+function usage()
+{
+cat << EOF
+Usage:
+
+\`\`\`bash
+
+  $BIN
+
+\`\`\`
+
+It searches the bash history for the last time a command was run that
+sends a comment to redmine and calculates how much time has elapsed and
+displays it in HH: MM format.
+
+Example:
+
+\`\`\`bash
+
+  $BIN
+
+\`\`\`
+
+  06:53
+
+EOF
+exit 0
+}
+
+[[ "$1" =~ ^[-]+(h|help) ]] && usage
+
+REGEX='(from-jrnl|add-comment)'
+
+RED="$(redmine-history \
+  | grep -E "$REGEX"   \
+  | grep -v timediff)"
+
+RED="$(redmine-history \
+  | grep -E "$REGEX"   \
+  | grep -v timediff   \
+  | tail -1            \
+  | awk '{print $1}')"
+
+NOW="$(date +%H:%M)"
+
+[[ -z "$RED" ]] && exit 1
+
+INSIDE_TMUX=0
+[[ "$(env | grep -wo TMUX)" = 'TMUX' ]] && INSIDE_TMUX=1
+
+if [[ "$INSIDE_TMUX" -eq 1 ]]
+then
+  COLOR_0="#[fg=colour${COLOR_NORMAL},bg=default]"
+  COLOR_1="#[fg=colour${COLOR_WARNING},bg=default]"
+  COLOR_2="#[fg=colour${COLOR_ALERT},bg=default]"
+  COLOR_3="#[fg=colour${COLOR_CRITICAL},bg=default]"
+else
+  COLOR_0="$(tput setaf "$COLOR_NORMAL")"
+  COLOR_1="$(tput setaf "$COLOR_WARNING")"
+  COLOR_2="$(tput setaf "$COLOR_ALERT")"
+  COLOR_3="$(tput setaf "$COLOR_CRITICAL")"
+fi
+
+COLOR="$COLOR_0"
+HHMM="$(timediff "$RED" "$NOW")"
+SECONDS="$(date -u -d "1970-01-01 $HHMM" '+%s')"
+
+# 1 pomodoro
+[[ "$SECONDS" -gt 1500 ]] && COLOR="$COLOR_1"
+
+# 2 pomodoros
+[[ "$SECONDS" -gt 3000 ]] && COLOR="$COLOR_2"
+
+# 4 pomodoros
+[[ "$SECONDS" -gt 6000 ]] && COLOR="$COLOR_3"
+
+[[ "$REDMINE_ANSI" -eq 0 ]] && COLOR=''
+
+echo "${COLOR}${HHMM}"
