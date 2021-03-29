@@ -37,3 +37,14 @@ done)
 [[ -z "$COLOR_WARNING"  ]] && COLOR_WARNING='11'
 [[ -z "$COLOR_ALERT"    ]] && COLOR_ALERT='208'
 [[ -z "$COLOR_CRITICAL" ]] && COLOR_CRITICAL='9'
+
+function check_jrnl_exists()
+{
+  command -v jrnl 2>/dev/null >/dev/null
+  echo "$?"
+}
+
+function get_issue_from_jrnl()
+{
+  [[ "$(check_jrnl_exists)" -eq 0 ]] && jrnl i 1 | tr -d '#'
+}
