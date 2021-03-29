@@ -24,10 +24,19 @@ die ()
 CONFIG="$HOME/.redmine.conf"
 [[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
 
-ISSUE=$(redmine-add-comment-from-jrnl | egrep -o "#[0-9]+\ ")
-OK=$?
-[[ "$OK" -ne 0 ]] && die "error when add comment"
-[[ -z "$ISSUE" ]] && die "empty ISSUE"
+HEAD=$(jrnl -1 | head -1 | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+ISSUE=$(echo "$HEAD" | egrep -wo "#[0-9]+" | head -1 | egrep -o "[0-9]+")
+
+if [[ -z "$ISSUE" ]]
+then
+  # not found #ISSUE in header of journal
+  if [[ -z "$1" ]]
+  then
+    die "empty issue"
+  else
+    ISSUE="$1"
+  fi
+fi
 
 ISSUE_ID=$(echo "$ISSUE" | egrep -o "[0-9]+")
 [[ -z "$ISSUE_ID" ]] && die "empty ISSUE_ID"
