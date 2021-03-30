@@ -131,7 +131,6 @@ SELECT      i.id,
 FROM        issues AS i
 WHERE       i.project_id = $PROJECT_ID
 AND         i.status_id  = $FROM_STATUS_ID
-AND	    i.fixed_version_id IS NULL
 AND         DATEDIFF(CURDATE(), DATE(i.updated_on)) >= $DAYS
 ORDER BY    i.id;
 EOF
@@ -145,7 +144,6 @@ SET         status_id = $TO_STATUS_ID
 WHERE       project_id = $PROJECT_ID
 AND         status_id = $FROM_STATUS_ID
 AND         id = $1
-AND	        fixed_version_id IS NULL
 AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS;
 EOF
 }
