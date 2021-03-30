@@ -49,11 +49,25 @@ exit 0
 
 [[ "$1" =~ ^[-]+(h|help) ]] && usage
 
-if [[ -z "$1" ]]
+if [[ ! -t 0 ]]
 then
-  ISSUE="$(get_issue_from_jrnl)"
+  TMPI="$(mktemp)"
+
+  true > "$TMPI"
+
+  while IFS= read -r PIPED_INPUT
+  do
+    echo "$PIPED_INPUT" >> "$TMPI"
+  done
+
+fi
+
+if [[ -e "$TMPI" ]]
+then
+  ISSUE="$(grep -Eo '^[0-9]+$' "$TMPI" | head -1)"
 else
   ISSUE="$1"
+  [[ -z "$1" ]] && ISSUE="$(get_issue_from_jrnl)"
 fi
 
 [[ -z "$ISSUE" ]] && die "EMPTY ISSUE"
