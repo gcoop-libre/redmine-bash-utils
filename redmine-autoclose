@@ -105,7 +105,7 @@ WHERE       project_id = $PROJECT_ID
 AND         priority_id = $FROM_PRIORITY_ID
 AND         id = $1
 AND         DATEDIFF(CURDATE(), DATE(updated_on)) >= $DAYS
-AND	    tracker_id <> 5;
+AND         tracker_id <> 5;
 EOF
 }
 
