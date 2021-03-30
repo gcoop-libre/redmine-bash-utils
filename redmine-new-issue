@@ -16,25 +16,60 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-die ()
+# shellcheck disable=SC1090
+
+DIR_BIN="$(dirname "$0")" && source "$DIR_BIN/redmine-common"
+
+function usage()
 {
-  echo -e "\e[31m[ERROR]\e[0m $1" && exit 1
+cat << EOF
+Usage:
+
+\`\`\`bash
+
+  $BIN SUBJECT [DESCRIPTION]
+
+\`\`\`
+
+Create new issue and return issue id.
+
+Example:
+
+\`\`\`bash
+
+  $BIN 'test subject' 'test description'
+
+  1234
+
+\`\`\`
+
+EOF
+exit 0
 }
 
-CONFIG="$HOME/.redmine.conf"
-[[ ! -e "$CONFIG" ]] && die "not found file: $CONFIG"
+[[ "$1" =~ ^[-]+(h|help) ]] && usage
 
-eval $(sed '/:/!d;/^ *#/d;s/:/ /;' < "$CONFIG" | while read -r key val
-do
-    str="$key='$val'"
-    echo "$str"
-done)
+if [[ ! -t 0 ]]
+then
+  TMPI="$(mktemp)"
 
-[[ -z "$API_URL" ]] && die "empty URL"
-[[ -z "$API_KEY" ]] && die "empty KEY"
+  true > "$TMPI"
 
-[[ -z "$1" ]] && die "empty SUBJECT"
-SUBJECT=$(echo "$1" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+  while IFS= read -r PIPED_INPUT
+  do
+    echo "$PIPED_INPUT" >> "$TMPI"
+  done
+
+fi
+
+if [[ -e "$TMPI" ]]
+then
+  SUBJECT="$(clean_subject "$(head -1 "$TMPI")")"
+else
+  SUBJECT="$(clean_subject "$1")"
+fi
+
+[[ -z "$SUBJECT" ]] && die "empty SUBJECT"
 
 # load default variables
 [[ ! -z "$DEFAULT_PRIORITY_ID" ]]    && PRIORITY_ID="$DEFAULT_PRIORITY_ID"
