@@ -166,41 +166,41 @@ opts="$($GETOPT -o mudftpec -l mycnf,user,days,from-status,to-status,project,ema
 local err=$?
 eval set -- "$opts"
 while true;do case $1 in
-    -m|--mycnf) mycnf=1; shift ;;
-    -u|--user) user=1; shift ;;
-    -d|--days) days=1; shift ;;
-    -f|--from-status) from_status=1; shift ;;
-    -t|--to-status) to_status=1; shift ;;
-    -p|--project-name) project=1; shift ;;
-    -e|--email) email=1; shift ;;
-    -c|--comments) comments=1; shift ;;
+    -m|--mycnf)        mycnf=1;       shift ;;
+    -u|--user)         user=1;        shift ;;
+    -p|--project-name) project=1;     shift ;;
+    -d|--days)         days=1;        shift ;;
+    -f|--from-status)  from_status=1; shift ;;
+    -t|--to-status)    to_status=1;   shift ;;
+    -e|--email)        email=1;       shift ;;
+    -c|--comments)     comments=1;    shift ;;
     --) shift; break ;;
 esac done
 
-[[ $mycnf -eq 1 ]] && MYCNF="$1"
-[[ $user -eq 1 ]] && USER_NAME="$2"
-[[ $days -eq 1 ]] && DAYS="$3"
-[[ $from_status -eq 1 ]] && FROM_STATUS="$4"
-[[ $to_status -eq 1 ]] && TO_STATUS="$5"
-[[ $project -eq 1 ]] && PROJECT_NAME="$6"
-[[ $email -eq 1 ]] && EMAIL="$7"
-[[ $comments -eq 1 ]] && NOTES="$8"
+[[ "$mycnf"       -eq 1 ]] && MYCNF="$1"
+[[ "$user"        -eq 1 ]] && USER_NAME="$2"
+[[ "$project"     -eq 1 ]] && PROJECT_NAME="$3"
+[[ "$days"        -eq 1 ]] && DAYS="$4"
+[[ "$from_status" -eq 1 ]] && FROM_STATUS="$5"
+[[ "$to_status"   -eq 1 ]] && TO_STATUS="$6"
+[[ "$email"       -eq 1 ]] && EMAIL="$7"
+[[ "$comments"    -eq 1 ]] && NOTES="$8"
 
 EXAMPLE=$(cat << EOF
 
 
 Short version:
 
-$PROGRAM -m ~/.my.cnf -u mr.robot -d 7 -f fixed -t closed -p test -e root@evilcorp.com -n 'closed for inactivity'
+$PROGRAM -m ~/.my.cnf -u mr.robot -p test -d 7 -f fixed -t closed -e root@evilcorp.com -n 'closed for inactivity'
 
 Extended version:
 
 $PROGRAM --mycnf ~/.my.cnf
          --user mr.robot
+         --project test
          --days 7
          --from-status fixed
          --to-status closed
-         --project test
          --email root@evilcorp.com
          --comments 'closed for inactivity'
 
