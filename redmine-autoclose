@@ -136,6 +136,20 @@ ORDER BY    i.id;
 EOF
 }
 
+sql_relate_issues()
+{
+
+[[ -z "$1" ]] && exit 1
+[[ -z "$2" ]] && exit 1
+
+cat << EOF
+INSERT INTO issue_relations
+						(issue_from_id, issue_to_id, relation_type)
+VALUES      ($1, $2, 'relates');
+EOF
+
+}
+
 sql_update_issue ()
 {
 cat << EOF
