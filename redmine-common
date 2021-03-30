@@ -48,3 +48,8 @@ function get_issue_from_jrnl()
 {
   [[ "$(check_jrnl_exists)" -eq 0 ]] && jrnl i 1 | tr -d '#'
 }
+
+function clean_subject()
+{
+  echo "$1" | tr '"' "'" | sed 's/\x1B\[[0-9;]*[JKmsu]//g'
+}
