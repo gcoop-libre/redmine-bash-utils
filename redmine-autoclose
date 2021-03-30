@@ -156,6 +156,28 @@ VALUES ( $1, 'Issue', '$NOTES', $USER_ID, NOW(), 0);
 EOF
 }
 
+sql_update_done_ratio ()
+{
+cat << EOF
+UPDATE      issues i
+INNER JOIN  issue_statuses s
+ON          s.id = i.status_id
+SET         i.done_ratio = 100
+WHERE       i.project_id = $PROJECT_ID
+AND         s.name IN ('Cerrada', 'Resuelta');
+EOF
+}
+
+sql_update_estimated_hours ()
+{
+cat << EOF
+UPDATE      issues i
+SET         i.estimated_hours = 1
+WHERE       i.project_id = $PROJECT_ID
+AND         i.estimated_hours IS NULL;
+EOF
+}
+
 init ()
 {
 
@@ -317,6 +339,9 @@ do
         sql_insert_journal "$i" >>"$UPDATE"
     fi
 done
+
+sql_update_done_ratio >> "$UPDATE"
+sql_update_estimated_hours >> "$UPDATE"
 
 [[ ! -e "$UPDATE" ]] && die "no valid $UPDATE"
 
