@@ -97,5 +97,6 @@ SECONDS="$(date -u -d "1970-01-01 $HHMM" '+%s')"
 [[ "$SECONDS" -gt 6000 ]] && COLOR="$COLOR_3"
 
 [[ "$REDMINE_ANSI" -eq 0 ]] && COLOR=''
+[[ "$REDMINE_ASCII" -eq 1 ]] && COLOR=''
 
 echo "${COLOR}${HHMM}"
