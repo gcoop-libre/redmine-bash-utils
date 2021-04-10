@@ -43,8 +43,6 @@ done)
 [[ -z "$1" ]] && die "empty ISSUE_ID"
 ISSUE_ID="$1"
 
-H1='"Content-Type: application/json"'
-H2='"X-Redmine-API-Key: '$API_KEY'"'
 URL="$API_URL/issues/${ISSUE_ID}.json"
 
 JQ=$(cat  << EOF
@@ -67,8 +65,22 @@ description: .issue.description
 EOF
 )
 
-echo
-echo curl -s -k -H "$H1" -X GET -H "$H2" "$URL" \
-  | bash \
-  | jq ". | $JQ" \
-  | jq .
+TMPE="$(mktemp)"
+TMPO="$(mktemp)"
+
+# %{stderr} require curl >= 7.63.0
+
+curl -s -k                            \
+  -w '%{stderr}%{http_code}'          \
+  -H 'Content-Type: application/json' \
+  -H "X-Redmine-API-Key: $API_KEY"    \
+  "$URL" 2>"$TMPE" > "$TMPO"
+
+HTTP_CODE="$(cat "$TMPE")"
+
+if [[ "$HTTP_CODE" = 200 ]]
+then
+  jq ". | $JQ" "$TMPO"
+else
+  echo "ERROR: $HTTP_CODE"
+fi
