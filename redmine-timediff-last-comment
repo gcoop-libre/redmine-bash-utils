@@ -55,10 +55,6 @@ REGEX='(from-jrnl|add-comment)'
 
 RED="$(redmine-history \
   | grep -E "$REGEX"   \
-  | grep -v timediff)"
-
-RED="$(redmine-history \
-  | grep -E "$REGEX"   \
   | grep -v timediff   \
   | tail -1            \
   | awk '{print $1}')"
