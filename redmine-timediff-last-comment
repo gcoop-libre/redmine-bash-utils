@@ -61,7 +61,7 @@ RED="$(redmine-history \
 
 NOW="$(date +%H:%M)"
 
-[[ -z "$RED" ]] && exit 1
+[[ -z "$RED" ]] && RED='00:00'
 
 INSIDE_TMUX=0
 [[ "$(env | grep -wo TMUX)" = 'TMUX' ]] && INSIDE_TMUX=1
